@@ -5,8 +5,6 @@ import { scanUrl } from '../services/scanner.js'
 import { buildJsonReport, buildHtmlReport } from '../services/reporter.js'
 
 const queue = new PQueue({ concurrency: 2 })
-
-// In-memory progress map (scan_id -> progress 0-100)
 const progress = new Map()
 
 export function getProgress(scanId) {
@@ -21,17 +19,13 @@ async function runJob(scanId, urlA, urlB) {
   progress.set(scanId, 5)
 
   try {
-    // Mark running
     await supabase.from('scans').update({ status: 'running' }).eq('id', scanId)
-
     progress.set(scanId, 10)
 
-    // Scan URL A
     console.log(`[${scanId}] Scanning URL A: ${urlA}`)
     const resultsA = await scanUrl(urlA)
     progress.set(scanId, urlB ? 45 : 75)
 
-    // Scan URL B (optional)
     let resultsB = null
     if (urlB) {
       console.log(`[${scanId}] Scanning URL B: ${urlB}`)
@@ -39,17 +33,14 @@ async function runJob(scanId, urlA, urlB) {
       progress.set(scanId, 80)
     }
 
-    // Upload screenshots
     const screenshotUrlA = await uploadScreenshot(scanId, 'a', resultsA.screenshotBuffer)
     const screenshotUrlB = urlB ? await uploadScreenshot(scanId, 'b', resultsB?.screenshotBuffer) : null
 
     progress.set(scanId, 88)
 
-    // Build reports
     const jsonReport = buildJsonReport({ scanId, urlA, urlB, resultsA, resultsB })
     const htmlReport = buildHtmlReport({ report: jsonReport, screenshotUrlA, screenshotUrlB })
 
-    // Upload HTML report
     const htmlPath = `reports/${scanId}/report.html`
     await supabase.storage.from('screenshots').upload(htmlPath, Buffer.from(htmlReport), {
       contentType: 'text/html',
@@ -59,17 +50,14 @@ async function runJob(scanId, urlA, urlB) {
 
     progress.set(scanId, 93)
 
-    // Write issues to DB
     const allIssues = [
       ...resultsA.issues.map((i) => ({ ...i, scan_id: scanId, url_target: urlA, id: uuid() })),
       ...(resultsB?.issues.map((i) => ({ ...i, scan_id: scanId, url_target: urlB, id: uuid() })) ?? []),
     ]
-
     if (allIssues.length > 0) {
       await supabase.from('issues').insert(allIssues)
     }
 
-    // Write report to DB
     await supabase.from('reports').insert({
       id: uuid(),
       scan_id: scanId,
@@ -81,7 +69,6 @@ async function runJob(scanId, urlA, urlB) {
       json_report: jsonReport,
     })
 
-    // Mark done
     await supabase
       .from('scans')
       .update({ status: 'done', completed_at: new Date().toISOString() })
