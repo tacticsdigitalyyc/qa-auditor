@@ -36,3 +36,8 @@ create index if not exists scans_project_id_idx on scans(project_id);
 create index if not exists issues_fingerprint_idx on issues(fingerprint);
 create index if not exists issues_status_idx on issues(status);
 create index if not exists projects_created_at_idx on projects(created_at desc);
+
+-- Migration 002b: add explanation column to issues
+alter table issues
+  add column if not exists explanation jsonb;
+-- explanation shape: { impact, steps[], codeExample, effort, effortNote }

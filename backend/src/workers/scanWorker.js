@@ -4,6 +4,7 @@ import supabase from '../utils/supabase.js'
 import { scanUrl } from '../services/scanner.js'
 import { buildJsonReport, buildHtmlReport } from '../services/reporter.js'
 import { fingerprint, computeScore, diffIssues, summarizeDiff } from '../services/diff.js'
+import { enrichIssues } from '../services/explainer.js'
 
 const queue = new PQueue({ concurrency: 2 })
 const progress = new Map()
@@ -46,9 +47,14 @@ async function runJob(scanId, urlA, urlB, projectId) {
         }))
       : []
 
+    // AI enrichment — adds impact, steps, code example, effort to each issue
+    console.log(`[${scanId}] Enriching issues with AI explanations...`)
+    const enrichedA = await enrichIssues(fingerprintedA.map(i => ({ ...i, url_target: urlA })))
+    const enrichedB = resultsB ? await enrichIssues(fingerprintedB.map(i => ({ ...i, url_target: urlB }))) : []
+
     // Compute QA scores
-    const scoreA = computeScore(fingerprintedA)
-    const scoreB = resultsB ? computeScore(fingerprintedB) : null
+    const scoreA = computeScore(enrichedA)
+    const scoreB = resultsB ? computeScore(enrichedB) : null
 
     // Load previous scan issues for this project (for diff)
     let diffSummary = null
@@ -94,7 +100,7 @@ async function runJob(scanId, urlA, urlB, projectId) {
     const screenshotUrlB = urlB ? await uploadScreenshot(scanId, 'b', resultsB?.screenshotBuffer) : null
 
     // Build reports
-    const jsonReport = buildJsonReport({ scanId, urlA, urlB, resultsA, resultsB, scoreA, scoreB, diffSummary })
+    const jsonReport = buildJsonReport({ scanId, urlA, urlB, resultsA: { ...resultsA, issues: enrichedA }, resultsB: resultsB ? { ...resultsB, issues: enrichedB } : null, scoreA, scoreB, diffSummary })
     const htmlReport = buildHtmlReport({ report: jsonReport, screenshotUrlA, screenshotUrlB })
 
     const htmlPath = `reports/${scanId}/report.html`
@@ -108,8 +114,8 @@ async function runJob(scanId, urlA, urlB, projectId) {
 
     // Write issues with fingerprints
     const allIssues = [
-      ...fingerprintedA.map(i => ({ ...i, scan_id: scanId, url_target: urlA, id: uuid(), status: 'open' })),
-      ...fingerprintedB.map(i => ({ ...i, scan_id: scanId, url_target: urlB, id: uuid(), status: 'open' })),
+      ...enrichedA.map(i => ({ ...i, scan_id: scanId, url_target: urlA, id: uuid(), status: 'open' })),
+      ...enrichedB.map(i => ({ ...i, scan_id: scanId, url_target: urlB, id: uuid(), status: 'open' })),
     ]
     if (allIssues.length > 0) await supabase.from('issues').insert(allIssues)
 
