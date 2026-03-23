@@ -6,7 +6,7 @@ import { enqueueJob, getProgress } from '../workers/scanWorker.js'
 const router = Router()
 
 router.post('/', async (req, res) => {
-  const { url_a, url_b } = req.body
+  const { url_a, url_b, project_id, label } = req.body
   if (!url_a) return res.status(400).json({ error: 'url_a is required' })
 
   for (const url of [url_a, url_b].filter(Boolean)) {
@@ -20,19 +20,21 @@ router.post('/', async (req, res) => {
     id: scanId,
     url_a,
     url_b: url_b || null,
+    project_id: project_id || null,
+    label: label || null,
     status: 'pending',
   })
 
   if (error) return res.status(500).json({ error: 'Failed to create scan', detail: error.message })
 
-  enqueueJob(scanId, url_a, url_b || null)
+  enqueueJob(scanId, url_a, url_b || null, project_id || null)
   res.status(201).json({ scanId })
 })
 
 router.get('/:id', async (req, res) => {
   const { data, error } = await supabase
     .from('scans')
-    .select('id, url_a, url_b, status, created_at, completed_at, error')
+    .select('id, url_a, url_b, status, label, project_id, created_at, completed_at, error')
     .eq('id', req.params.id)
     .single()
 
@@ -47,17 +49,39 @@ router.get('/:id/report', async (req, res) => {
     .eq('scan_id', req.params.id)
     .single()
 
-  if (error || !data) return res.status(404).json({ error: 'Report not found. Scan may still be running.' })
+  if (error || !data) return res.status(404).json({ error: 'Report not ready' })
+  res.json(data)
+})
+
+// PATCH /scan/:scanId/issues/:issueId — update issue status
+router.patch('/:scanId/issues/:issueId', async (req, res) => {
+  const { status } = req.body
+  if (!['open', 'resolved', 'ignored'].includes(status)) {
+    return res.status(400).json({ error: 'status must be open | resolved | ignored' })
+  }
+
+  const { data, error } = await supabase
+    .from('issues')
+    .update({ status })
+    .eq('id', req.params.issueId)
+    .eq('scan_id', req.params.scanId)
+    .select()
+    .single()
+
+  if (error) return res.status(500).json({ error: error.message })
   res.json(data)
 })
 
 router.get('/', async (req, res) => {
-  const { data, error } = await supabase
+  const query = supabase
     .from('scans')
-    .select('id, url_a, url_b, status, created_at, completed_at')
+    .select('id, url_a, url_b, status, label, project_id, created_at, completed_at')
     .order('created_at', { ascending: false })
     .limit(20)
 
+  if (req.query.project_id) query.eq('project_id', req.query.project_id)
+
+  const { data, error } = await query
   if (error) return res.status(500).json({ error: error.message })
   res.json(data)
 })

@@ -1,32 +1,31 @@
 const BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001'
 
-export async function startScan(urlA, urlB) {
-  const res = await fetch(`${BASE}/scan`, {
-    method: 'POST',
+async function req(path, opts = {}) {
+  const res = await fetch(`${BASE}${path}`, {
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ url_a: urlA, url_b: urlB || undefined }),
+    ...opts,
   })
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
-    throw new Error(err.error || 'Failed to start scan')
+    throw new Error(err.error || `HTTP ${res.status}`)
   }
   return res.json()
 }
 
-export async function getScan(scanId) {
-  const res = await fetch(`${BASE}/scan/${scanId}`)
-  if (!res.ok) throw new Error('Scan not found')
-  return res.json()
-}
+// Scans
+export const startScan = (urlA, urlB, projectId, label) =>
+  req('/scan', { method: 'POST', body: JSON.stringify({ url_a: urlA, url_b: urlB || undefined, project_id: projectId || undefined, label: label || undefined }) })
 
-export async function getReport(scanId) {
-  const res = await fetch(`${BASE}/scan/${scanId}/report`)
-  if (!res.ok) throw new Error('Report not ready')
-  return res.json()
-}
+export const getScan = (id) => req(`/scan/${id}`)
+export const getReport = (id) => req(`/scan/${id}/report`)
+export const listScans = (projectId) => req(`/scan${projectId ? `?project_id=${projectId}` : ''}`)
+export const updateIssueStatus = (scanId, issueId, status) =>
+  req(`/scan/${scanId}/issues/${issueId}`, { method: 'PATCH', body: JSON.stringify({ status }) })
 
-export async function listScans() {
-  const res = await fetch(`${BASE}/scan`)
-  if (!res.ok) throw new Error('Failed to load scans')
-  return res.json()
-}
+// Projects
+export const createProject = (name, url, description) =>
+  req('/projects', { method: 'POST', body: JSON.stringify({ name, url, description }) })
+
+export const listProjects = () => req('/projects')
+export const getProject = (id) => req(`/projects/${id}`)
+export const deleteProject = (id) => req(`/projects/${id}`, { method: 'DELETE' })
