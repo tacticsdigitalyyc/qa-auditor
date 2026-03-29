@@ -19,6 +19,9 @@ export const startScan = (urlA, urlB, projectId, label) =>
 export const getScan = (id) => req(`/scan/${id}`)
 export const getReport = (id) => req(`/scan/${id}/report`)
 export const listScans = (projectId) => req(`/scan${projectId ? `?project_id=${projectId}` : ''}`)
+export const runDeepScan = (scanId) =>
+  req(`/deep-scan/${scanId}`, { method: 'POST' })
+
 export const updateIssueStatus = (scanId, issueId, status) =>
   req(`/scan/${scanId}/issues/${issueId}`, { method: 'PATCH', body: JSON.stringify({ status }) })
 

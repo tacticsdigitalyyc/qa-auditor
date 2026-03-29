@@ -1,4 +1,5 @@
 import { getBrowser } from '../utils/browser.js'
+import { runAutoChecks } from './contentChecker.js'
 
 const PAGE_TIMEOUT = 20000
 const LINK_TIMEOUT = 12000
@@ -252,6 +253,14 @@ export async function scanUrl(url) {
       suggested_fix: 'Verify the resource URL and server availability.',
       meta: req,
     })
+  }
+
+  // ── Content quality + security checks (auto-scan) ────────────────────────
+  try {
+    const contentIssues = await runAutoChecks(page, url)
+    issues.push(...contentIssues)
+  } catch (err) {
+    console.error('[contentChecker] Error:', err.message)
   }
 
   await context.close()

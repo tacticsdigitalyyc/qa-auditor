@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { getScan, getReport, updateIssueStatus } from '../lib/api.js'
+import { getScan, getReport, updateIssueStatus, runDeepScan } from '../lib/api.js'
 import IssuesTable from '../components/IssuesTable.jsx'
 import SeoTable from '../components/SeoTable.jsx'
 import SeverityBadge from '../components/SeverityBadge.jsx'
@@ -14,6 +14,23 @@ export default function ScanPage() {
   const [scan, setScan] = useState(null)
   const [report, setReport] = useState(null)
   const [error, setError] = useState(null)
+  const [deepScanning, setDeepScanning] = useState(false)
+  const [deepScanDone, setDeepScanDone] = useState(false)
+
+  const handleDeepScan = async () => {
+    setDeepScanning(true)
+    try {
+      await runDeepScan(id)
+      setDeepScanDone(true)
+      setTimeout(() => {
+        getReport(id).then(setReport)
+      }, 5000)
+    } catch (e) {
+      console.error('Deep scan failed', e)
+    } finally {
+      setDeepScanning(false)
+    }
+  }
   const [tab, setTab] = useState('a')
   const pollRef = useRef(null)
 
@@ -67,6 +84,15 @@ export default function ScanPage() {
           >
             Export JSON
           </a>
+        )}
+        {report && !isRunning && (
+          <button
+            onClick={handleDeepScan}
+            disabled={deepScanning || deepScanDone}
+            className="text-xs bg-red-900/40 hover:bg-red-900/60 disabled:bg-gray-800 disabled:text-gray-600 border border-red-900/60 text-red-400 px-3 py-1.5 rounded-lg transition-colors"
+          >
+            {deepScanning ? 'Running deep scan...' : deepScanDone ? 'Deep scan complete' : 'Run deep scan'}
+          </button>
         )}
         {report?.html_report_path && (
           <a href={report.html_report_path} target="_blank" rel="noopener noreferrer"

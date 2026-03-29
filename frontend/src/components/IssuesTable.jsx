@@ -7,6 +7,15 @@ const TYPE_LABELS = {
   missing_image: 'Missing Image',
   seo: 'SEO',
   console_error: 'Console Error',
+  duplicate_content: 'Duplicate Content',
+  content_quality: 'Content Quality',
+  security: 'Security',
+}
+
+const TYPE_COLORS = {
+  security: 'text-red-400',
+  duplicate_content: 'text-orange-400',
+  content_quality: 'text-yellow-400',
 }
 
 const EFFORT_COLORS = {
