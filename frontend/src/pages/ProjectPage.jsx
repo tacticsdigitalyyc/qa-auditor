@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link, useParams, useNavigate } from 'react-router-dom'
-import { getProject, startScan, deleteProject } from '../lib/api.js'
+import { getProject, startScan, deleteProject, updateProject } from '../lib/api.js'
 import QAScore from '../components/QAScore.jsx'
 import DiffSummary from '../components/DiffSummary.jsx'
 
@@ -10,10 +10,17 @@ export default function ProjectPage() {
   const [project, setProject] = useState(null)
   const [loading, setLoading] = useState(true)
   const [scanning, setScanning] = useState(false)
+  const [schedule, setSchedule] = useState('none')
+  const [notifyEmail, setNotifyEmail] = useState('')
+  const [savingSchedule, setSavingSchedule] = useState(false)
   const [scanLabel, setScanLabel] = useState('')
   const [error, setError] = useState(null)
 
-  const load = () => getProject(id).then(setProject).catch(() => setError('Project not found')).finally(() => setLoading(false))
+  const load = () => getProject(id).then(p => {
+    setProject(p)
+    setSchedule(p.schedule || 'none')
+    setNotifyEmail(p.notify_email || '')
+  }).catch(() => setError('Project not found')).finally(() => setLoading(false))
 
   useEffect(() => { load() }, [id])
 
@@ -26,6 +33,18 @@ export default function ProjectPage() {
     } catch (e) {
       setError(e.message)
       setScanning(false)
+    }
+  }
+
+  const handleSaveSchedule = async () => {
+    setSavingSchedule(true)
+    try {
+      await updateProject(id, { schedule, notify_email: notifyEmail || null })
+      setProject(p => ({ ...p, schedule, notify_email: notifyEmail }))
+    } catch (e) {
+      console.error('Failed to save schedule', e)
+    } finally {
+      setSavingSchedule(false)
     }
   }
 
@@ -143,8 +162,52 @@ export default function ProjectPage() {
         </div>
       )}
 
+      {/* Schedule settings */}
+      <div className="mt-8 bg-gray-900 border border-gray-800 rounded-xl p-5">
+        <h2 className="text-sm font-semibold text-white mb-4">Monitoring schedule</h2>
+        <div className="grid grid-cols-2 gap-3 mb-3">
+          <div>
+            <label className="block text-xs text-gray-500 mb-1">Auto-scan frequency</label>
+            <select
+              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500"
+              value={schedule}
+              onChange={e => setSchedule(e.target.value)}
+            >
+              <option value="none">Off</option>
+              <option value="daily">Daily</option>
+              <option value="weekly">Weekly (Monday)</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs text-gray-500 mb-1">Alert email</label>
+            <input
+              type="email"
+              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500"
+              placeholder="you@example.com"
+              value={notifyEmail}
+              onChange={e => setNotifyEmail(e.target.value)}
+            />
+          </div>
+        </div>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={handleSaveSchedule}
+            disabled={savingSchedule}
+            className="text-sm bg-blue-600 hover:bg-blue-500 disabled:bg-gray-700 disabled:text-gray-500 text-white px-4 py-1.5 rounded-lg transition-colors"
+          >
+            {savingSchedule ? 'Saving...' : 'Save settings'}
+          </button>
+          {schedule !== 'none' && (
+            <span className="text-xs text-gray-500">
+              {schedule === 'daily' ? 'Scans every day at 9am' : 'Scans every Monday at 9am'}
+              {notifyEmail ? ` · alerts to ${notifyEmail}` : ' · no email alerts'}
+            </span>
+          )}
+        </div>
+      </div>
+
       {/* Danger zone */}
-      <div className="mt-12 border-t border-gray-800 pt-6">
+      <div className="mt-8 border-t border-gray-800 pt-6">
         <button onClick={handleDelete} className="text-xs text-red-500 hover:text-red-400 transition-colors">
           Delete project
         </button>

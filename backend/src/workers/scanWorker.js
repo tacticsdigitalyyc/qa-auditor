@@ -13,11 +13,11 @@ export function getProgress(scanId) {
   return progress.get(scanId) ?? 0
 }
 
-export function enqueueJob(scanId, urlA, urlB, projectId) {
-  queue.add(() => runJob(scanId, urlA, urlB, projectId))
+export function enqueueJob(scanId, urlA, urlB, projectId, onComplete) {
+  queue.add(() => runJob(scanId, urlA, urlB, projectId, onComplete))
 }
 
-async function runJob(scanId, urlA, urlB, projectId) {
+async function runJob(scanId, urlA, urlB, projectId, onComplete) {
   progress.set(scanId, 5)
 
   try {
@@ -149,6 +149,15 @@ async function runJob(scanId, urlA, urlB, projectId) {
 
     progress.set(scanId, 100)
     console.log(`[${scanId}] Scan complete. Score: ${scoreA}`)
+
+    // Notify scheduler if this was a scheduled scan
+    if (onComplete) {
+      try {
+        await onComplete({ diff: diffSummary, scoreA })
+      } catch (err) {
+        console.error(`[${scanId}] onComplete callback error:`, err.message)
+      }
+    }
   } catch (err) {
     console.error(`[${scanId}] Scan failed:`, err.message)
     await supabase.from('scans').update({ status: 'failed', error: err.message }).eq('id', scanId)

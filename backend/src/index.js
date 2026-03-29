@@ -4,6 +4,7 @@ import cors from 'cors'
 import scanRoutes from './routes/scan.js'
 import projectRoutes from './routes/projects.js'
 import deepScanRoutes from './routes/deepScan.js'
+import { startScheduler } from './services/scheduler.js'
 
 const app = express()
 const PORT = process.env.PORT || 3001
@@ -23,4 +24,5 @@ app.use('/deep-scan', deepScanRoutes)
 
 app.listen(PORT, () => {
   console.log(`QA Auditor backend running on port ${PORT}`)
+  startScheduler()
 })

@@ -7,7 +7,7 @@ export default function ProjectsPage() {
   const [projects, setProjects] = useState([])
   const [loading, setLoading] = useState(true)
   const [showNew, setShowNew] = useState(false)
-  const [form, setForm] = useState({ name: '', url: '', description: '' })
+  const [form, setForm] = useState({ name: '', url: '', description: '', schedule: 'none', notify_email: '' })
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState(null)
   const navigate = useNavigate()
@@ -22,7 +22,7 @@ export default function ProjectsPage() {
     try { new URL(form.url) } catch { return setError('Invalid URL.') }
     setSaving(true)
     try {
-      const project = await createProject(form.name, form.url, form.description)
+      const project = await createProject(form.name, form.url, form.description, form.schedule, form.notify_email)
       setProjects(p => [project, ...p])
       setShowNew(false)
       setForm({ name: '', url: '', description: '' })
@@ -86,6 +86,30 @@ export default function ProjectsPage() {
               value={form.description}
               onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
             />
+          </div>
+          <div className="grid grid-cols-2 gap-3 mb-3">
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">Auto-scan schedule</label>
+              <select
+                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500"
+                value={form.schedule}
+                onChange={e => setForm(f => ({ ...f, schedule: e.target.value }))}
+              >
+                <option value="none">Off</option>
+                <option value="daily">Daily</option>
+                <option value="weekly">Weekly (Monday)</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">Alert email (optional)</label>
+              <input
+                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500"
+                placeholder="you@example.com"
+                type="email"
+                value={form.notify_email}
+                onChange={e => setForm(f => ({ ...f, notify_email: e.target.value }))}
+              />
+            </div>
           </div>
           {error && <p className="text-red-400 text-xs mb-3">{error}</p>}
           <div className="flex gap-2">

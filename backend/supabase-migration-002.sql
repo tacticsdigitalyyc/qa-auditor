@@ -41,3 +41,8 @@ create index if not exists projects_created_at_idx on projects(created_at desc);
 alter table issues
   add column if not exists explanation jsonb;
 -- explanation shape: { impact, steps[], codeExample, effort, effortNote }
+
+-- Migration 003: scheduled scans + email notifications
+alter table projects
+  add column if not exists schedule text not null default 'none', -- none | daily | weekly
+  add column if not exists notify_email text;

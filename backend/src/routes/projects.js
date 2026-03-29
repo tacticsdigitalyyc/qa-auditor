@@ -6,13 +6,13 @@ const router = Router()
 
 // POST /projects — create a project
 router.post('/', async (req, res) => {
-  const { name, url, description } = req.body
+  const { name, url, description, schedule, notify_email } = req.body
   if (!name || !url) return res.status(400).json({ error: 'name and url are required' })
   try { new URL(url) } catch { return res.status(400).json({ error: 'Invalid URL' }) }
 
   const { data, error } = await supabase
     .from('projects')
-    .insert({ id: uuid(), name, url, description: description || null })
+    .insert({ id: uuid(), name, url, description: description || null, schedule: schedule || 'none', notify_email: notify_email || null })
     .select()
     .single()
 
@@ -56,11 +56,13 @@ router.get('/:id', async (req, res) => {
 
 // PATCH /projects/:id — update project
 router.patch('/:id', async (req, res) => {
-  const { name, url, description } = req.body
+  const { name, url, description, schedule, notify_email } = req.body
   const updates = {}
   if (name) updates.name = name
   if (url) updates.url = url
   if (description !== undefined) updates.description = description
+  if (schedule !== undefined) updates.schedule = schedule
+  if (notify_email !== undefined) updates.notify_email = notify_email || null
 
   const { data, error } = await supabase
     .from('projects')

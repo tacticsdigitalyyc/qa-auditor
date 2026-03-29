@@ -26,8 +26,11 @@ export const updateIssueStatus = (scanId, issueId, status) =>
   req(`/scan/${scanId}/issues/${issueId}`, { method: 'PATCH', body: JSON.stringify({ status }) })
 
 // Projects
-export const createProject = (name, url, description) =>
-  req('/projects', { method: 'POST', body: JSON.stringify({ name, url, description }) })
+export const createProject = (name, url, description, schedule, notify_email) =>
+  req('/projects', { method: 'POST', body: JSON.stringify({ name, url, description, schedule, notify_email }) })
+
+export const updateProject = (id, updates) =>
+  req(`/projects/${id}`, { method: 'PATCH', body: JSON.stringify(updates) })
 
 export const listProjects = () => req('/projects')
 export const getProject = (id) => req(`/projects/${id}`)
